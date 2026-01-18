@@ -1,64 +1,70 @@
 import express from "express";
+import morgan from "morgan";
+import bodyParser from "body-parser";
 
 const app = express();
+app.use(morgan("combined"));
+
+app.use(bodyParser.urlencoded({ extended: true }));
+app.use(bodyParser.json());
+
 const PORT = 3000;
 
 //habit model
 class habit {
-  #habit_id;
-  #habit_name;
-  #habit_type;
-  #habit_progress;
+  #habitId;
+  #habitName;
+  #habitType;
+  #habitProgress;
 
-  get habit_id() {
-    return this.#habit_id;
+  get habitId() {
+    return this.#habitId;
   }
 
-  set habit_id(id) {
-    this.#habit_id = id;
+  set habitId(id) {
+    this.#habitId = id;
   }
 
-  get habit_name() {
-    return this.#habit_name;
+  get habitName() {
+    return this.#habitName;
   }
 
-  set habit_name(name) {
-    this.#habit_name = name;
+  set habitName(name) {
+    this.#habitName = name;
   }
 
-  get habit_type() {
-    return this.#habit_type;
+  get habitType() {
+    return this.#habitType;
   }
 
-  set habit_type(type) {
-    this.#habit_type = type;
+  set habitType(type) {
+    this.#habitType = type;
   }
 
-  get habit_progress() {
-    return this.#habit_progress;
+  get habitProgress() {
+    return this.#habitProgress;
   }
 
-  set habit_progress(progress) {
-    this.#habit_progress = progress;
+  set habitProgress(progress) {
+    this.#habitProgress = progress;
   }
 
   constructor(name, type, progress) {
-    this.habit_id = Math.random().toString(16).slice(10);
-    this.habit_name = name;
-    this.habit_type = type;
-    this.habit_progress = progress;
+    this.habitId = Math.random().toString(16).slice(10);
+    this.habitName = name;
+    this.habitType = type;
+    this.habitProgress = progress;
   }
 
   toJSON() {
     return {
-      habit_id: this.#habit_id,
-      habit_name: this.#habit_name,
-      habit_type: this.#habit_type,
-      habit_progress: this.#habit_progress
+      habitId: this.#habitId,
+      habitName: this.#habitName,
+      habitType: this.#habitType,
+      habitProgress: this.#habitProgress,
     };
   }
 }
-
 
 //array to store all the objects
 var entries = [];
@@ -70,21 +76,23 @@ app.get("/", (req, res) => {
   res.send("Server is running");
 });
 
-
 //create new entries
 app.post("/create", (req, res) => {
-  var flag=0;
+  var flag = 0;
   const obj = new habit(req.body.name, req.body.type, req.body.progress);
-  entries.forEach(entry => {
-    if(String(entry.habit_name).toLowerCase()===String(req.body.name).toLowerCase()){
-      flag=1;
+  entries.forEach((entry) => {
+    if (
+      String(entry.habitName).toLowerCase() ===
+      String(req.body.name).toLowerCase()
+    ) {
+      flag = 1;
     }
   });
-    if (flag) {
+  if (flag) {
     res.send("A Habit with this name already exists");
   } else {
     entries.push(obj.toJSON());
-    
+
     res.send(obj);
   }
 });
@@ -101,7 +109,7 @@ app.get("/fetch", (req, res) => {
 //fetch with id
 app.get("/fetch/:id", (req, res) => {
   entries.forEach((entry) => {
-    if (entry.habit_id == req.params.id) {
+    if (entry.habitId == req.params.id) {
       return res.send(entry);
     }
   });
@@ -109,35 +117,119 @@ app.get("/fetch/:id", (req, res) => {
 });
 
 //Delete entry via id
-app.delete("/delete/:id", (req, res) => {
-    let count = 0;
-    for (let i = 0; i < entries.length; i++) {
-      if (entries[i].habit_id == req.params.id) {
-        break;
-      }
-      count++;
+app.delete("/deleteById/:id", (req, res) => {
+  let count = 0;
+  for (let i = 0; i < entries.length; i++) {
+    if (entries[i].habitId == req.params.id) {
+      break;
     }
-    
-    const deletedEntry = entries.splice(count, 1);
-    
-    res.send(deletedEntry);
+    count++;
+  }
+
+  const deletedEntry = entries.splice(count, 1);
+
+  res.send(deletedEntry);
 });
 
-//update entries
-// app.put("/update/:id", (req, res) => {
-//   var flag = 0
-//    let count = 0;
-//     for (let i = 0; i < entries.length; i++) {
-//       if (entries[i].habit_id == req.params.id) {
-//         flag=1;
-//         break;
-//       }
-//       count++;
-//     }
-//   !flag?res.send("The given id is not found in the database")
-//   :;
-// });
+//Delete entry via name
+app.delete("/deleteByName/:name", (req, res) => {
+  let count = 0;
+  for (let i = 0; i < entries.length; i++) {
+    if (entries[i].habitName == req.params.name) {
+      break;
+    }
+    count++;
+  }
 
+  const deletedEntry = entries.splice(count, 1);
+
+  res.send(deletedEntry);
+});
+
+//Delete entry via id
+app.delete("/deleteById/:id", (req, res) => {
+  let count = 0;
+  for (let i = 0; i < entries.length; i++) {
+    if (entries[i].habitId == req.params.id) {
+      break;
+    }
+    count++;
+  }
+
+  const deletedEntry = entries.splice(count, 1);
+
+  res.send(deletedEntry);
+});
+
+//update entries by id
+app.put("/updateById/:id", (req, res) => {
+  let found = 0;
+
+  for (let index = 0; index < entries.length; index++) {
+    if (entries[index].habitId === req.params.id) {
+      found = 1;
+
+      if (req.body.name == "" || req.body.name == null) {
+        console.log("old name is set");
+      } else {
+        entries[index].habitName = req.body.name;
+        console.log("new name is set");
+      }
+
+      if (req.body.type == "" || req.body.type == null) {
+        console.log("old type is set");
+      } else {
+        entries[index].habitType = req.body.type;
+        console.log("new type is set");
+      }
+      console.log("no id found");
+
+      if (req.body.progress == "" || req.body.progress == null) {
+        console.log("old progress is set");
+      } else {
+        entries[index].habitProgress = req.body.progress;
+        console.log("new progress is set");
+      }
+      return res.send(entries[index]);
+    }
+  }
+  if (!found) return res.send("no id match found");
+});
+
+//update entries by name
+app.put("/updateByName/:name", (req, res) => {
+  let found = 0;
+  console.log("/update called with name : " + req.params.name);
+
+  for (let index = 0; index < entries.length; index++) {
+    if (entries[index].habitName === req.params.name) {
+      found = 1;
+      if (req.body.name == "" || req.body.name == null) {
+        console.log("old name is set");
+      } else {
+        entries[index].habitName = req.body.name;
+        console.log("new name is set");
+      }
+
+      if (req.body.type == "" || req.body.type == null) {
+        console.log("old type is set");
+      } else {
+        entries[index].habitType = req.body.type;
+        console.log("new type is set");
+      }
+      console.log("no id found");
+
+      if (req.body.progress == "" || req.body.progress == null) {
+        console.log("old progress is set");
+      } else {
+        entries[index].habitProgress = req.body.progress;
+        console.log("new progress is set");
+      }
+      return res.send(entries[index]);
+    }
+  }
+  if (!found) return res.send("no name match found");
+});
 
 //fetch total enries
 app.get("/count", (req, res) => {
@@ -154,3 +246,4 @@ app.get("/test", (req, res) => {
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
 });
+
