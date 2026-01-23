@@ -1,6 +1,15 @@
 import express from "express";
 import morgan from "morgan";
 import bodyParser from "body-parser";
+import { loadEnvFile } from "node:process";
+loadEnvFile('../.env');
+//supabase databse config
+import { createClient } from "@supabase/supabase-js";
+
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey =process.env.SUPABASE_KEY;
+
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 const app = express();
 app.use(morgan("combined"));
@@ -9,62 +18,6 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 
 const PORT = 3000;
-
-//habit model
-class habit {
-  #habitId;
-  #habitName;
-  #habitType;
-  #habitProgress;
-
-  get habitId() {
-    return this.#habitId;
-  }
-
-  set habitId(id) {
-    this.#habitId = id;
-  }
-
-  get habitName() {
-    return this.#habitName;
-  }
-
-  set habitName(name) {
-    this.#habitName = name;
-  }
-
-  get habitType() {
-    return this.#habitType;
-  }
-
-  set habitType(type) {
-    this.#habitType = type;
-  }
-
-  get habitProgress() {
-    return this.#habitProgress;
-  }
-
-  set habitProgress(progress) {
-    this.#habitProgress = progress;
-  }
-
-  constructor(name, type, progress) {
-    this.habitId = Math.random().toString(16).slice(10);
-    this.habitName = name;
-    this.habitType = type;
-    this.habitProgress = progress;
-  }
-
-  toJSON() {
-    return {
-      habitId: this.#habitId,
-      habitName: this.#habitName,
-      habitType: this.#habitType,
-      habitProgress: this.#habitProgress,
-    };
-  }
-}
 
 //array to store all the objects
 var entries = [];
@@ -77,32 +30,34 @@ app.get("/", (req, res) => {
 });
 
 //create new entries
-app.post("/create", (req, res) => {
-  var flag = 0;
-  const obj = new habit(req.body.name, req.body.type, req.body.progress);
-  entries.forEach((entry) => {
-    if (
-      String(entry.habitName).toLowerCase() ===
-      String(req.body.name).toLowerCase()
-    ) {
-      flag = 1;
-    }
-  });
-  if (flag) {
+app.post("/create", async (req, res) => {
+  const { data, error } = await supabase
+    .from("habits")
+    .select()
+    .eq("name", req.body.name);
+  console.log(data)
+  if (data.length > 0 )  {
     res.send("A Habit with this name already exists");
   } else {
-    entries.push(obj.toJSON());
+   
 
-    res.send(obj);
+    const { data, error } = await supabase.from("habits").insert({ name: req.body.name,
+    type: req.body.type,
+    color: req.body.color,
+    category: req.body.category,
+    goal: req.body.goal}).select();
+    console.log(error);
+    res.send(data);
   }
 });
 
 //fetch all entries
-app.get("/fetch", (req, res) => {
+app.get("/fetch", async (req, res) => {
   if (entries.length == 0) {
     res.send("There are no entries to begin use /create endpoint");
   } else {
-    res.send(entries);
+    const { data, erorr } = await supabase.from(habits).select();
+    res.send(data);
   }
 });
 
@@ -232,8 +187,11 @@ app.put("/updateByName/:name", (req, res) => {
 });
 
 //fetch total enries
-app.get("/count", (req, res) => {
-  res.send(entries.length);
+app.get("/count", async (req, res) => {
+  const { count, error } = await supabase
+    .from("habits")
+    .select("*", { count: "exact", head: true });
+  res.send(count);
 });
 
 //redundant endpoint for testing
@@ -246,4 +204,3 @@ app.get("/test", (req, res) => {
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
 });
-
